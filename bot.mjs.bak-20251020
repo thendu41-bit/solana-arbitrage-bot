@@ -13,24 +13,31 @@ const connection = new Connection('https://api.devnet.solana.com', 'confirmed');
 
 async function checkArbitrageOpportunity() {
   try {
-    console.log('Checking arbitrage opportunity...');
+    console.log('Checking arbitrage opportunities...');
     const jupiterApi = createJupiterApiClient();
-    const quoteResponse = await jupiterApi.quoteGet({
-      inputMint: 'So11111111111111111111111111111111111111112', // USDC
-      outputMint: 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v', // USDT
-      amount: 10000000, // 0.01 USDC in lamports
-      slippageBps: 50, // 0.5% slippage
-    });
-    console.log('Quote response:', quoteResponse);
-    if (quoteResponse && quoteResponse.data && quoteResponse.data.outAmount) {
-      const outAmount = BigInt(quoteResponse.data.outAmount);
-      const inAmount = BigInt(10000000);
-      const profit = Number(outAmount - inAmount);
-      if (profit >= 0) { // Allow break-even or profit
-        console.log('Potential opportunity (debug):', quoteResponse.data);
-        await executeTradeWithFlashLoan(quoteResponse.data);
-      } else {
-        console.log('No profitable arbitrage opportunity found. Profit:', profit, 'Margin:', (profit / Number(inAmount)) * 100, '%');
+    const pairs = [
+      { inMint: 'So11111111111111111111111111111111111111112', outMint: 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v' }, // USDC/USDT
+      { inMint: 'So11111111111111111111111111111111111111112', outMint: 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v' }, // USDC/USDT (duplicate for testing)
+      { inMint: 'So11111111111111111111111111111111111111112', outMint: 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v' } // Add more pairs later (e.g., SOL/USDC)
+    ];
+    for (const pair of pairs) {
+      const quoteResponse = await jupiterApi.quoteGet({
+        inputMint: pair.inMint,
+        outputMint: pair.outMint,
+        amount: 10000000, // 0.01 USDC in lamports
+        slippageBps: 50, // 0.5% slippage
+      });
+      console.log('Quote response for', pair.inMint, 'to', pair.outMint, ':', quoteResponse);
+      if (quoteResponse && quoteResponse.data && quoteResponse.data.outAmount) {
+        const outAmount = BigInt(quoteResponse.data.outAmount);
+        const inAmount = BigInt(10000000);
+        const profit = Number(outAmount - inAmount);
+        if (profit >= 0) { // Allow break-even or profit
+          console.log('Potential opportunity (debug) for', pair.inMint, 'to', pair.outMint, ':', quoteResponse.data);
+          await executeTradeWithFlashLoan(quoteResponse.data);
+        } else {
+          console.log('No profitable arbitrage opportunity for', pair.inMint, 'to', pair.outMint, '. Profit:', profit, 'Margin:', (profit / Number(inAmount)) * 100, '%');
+        }
       }
     }
   } catch (error) {
