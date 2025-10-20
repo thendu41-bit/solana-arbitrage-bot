@@ -1,4 +1,4 @@
-import { Connection, Keypair, Transaction, SystemProgram } from '@solana/web3.js';
+import { Connection, Keypair, Transaction, SystemProgram, ComputeBudgetProgram } from '@solana/web3.js';
 import { createJupiterApiClient } from '@jup-ag/api';
 import pkg from '@kamino-finance/klend-sdk';
 const { Kamino } = pkg;
@@ -26,7 +26,7 @@ async function checkArbitrageOpportunity() {
       const outAmount = BigInt(quoteResponse.data.outAmount);
       const inAmount = BigInt(1000000);
       const profit = Number(outAmount - inAmount);
-      if (profit > -50000 && (profit / Number(inAmount)) > -0.05) { // Allow small losses for testing
+      if (profit > 0 || (profit / Number(inAmount)) > -0.05) { // Allow break-even or small losses
         console.log('Potential opportunity (debug):', quoteResponse.data);
         await executeTradeWithFlashLoan(quoteResponse.data);
       } else {
@@ -47,9 +47,9 @@ async function executeTradeWithFlashLoan(quote) {
       asset: 'USDC', // Borrow USDC
       callback: async (borrowedAssets) => {
         // Execute arbitrage swaps with borrowedAssets (placeholder—replace with Jupiter swap logic)
-        const swapTransaction = new Transaction().add(
-          SystemProgram.transfer({ fromPubkey: keypair.publicKey, toPubkey: keypair.publicKey, lamports: Number(flashLoanAmount) })
-        );
+        const swapTransaction = new Transaction()
+          .add(ComputeBudgetProgram.setComputeUnitLimit({ units: 200000 })) // Set compute budget
+          .add(SystemProgram.transfer({ fromPubkey: keypair.publicKey, toPubkey: keypair.publicKey, lamports: Number(flashLoanAmount) }));
         return swapTransaction; // Repay within callback
       },
     });
@@ -75,3 +75,4 @@ async function main() {
 }
 
 main().catch(console.error);
+
