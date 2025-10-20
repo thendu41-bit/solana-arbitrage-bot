@@ -14,6 +14,7 @@
     "@kamino-finance/klend-sdk": "^7.1.10",
     "@mrgnlabs/marginfi-client-v2": "^6.1.4",
     "@mrgnlabs/mrgn-common": "^2.0.7",
+    "@solana-program/compute-budget": "^0.10.0",
     "@solana-program/system": "0.9.0",
     "@solana/compat": "4.0.0",
     "@solana/kit": "4.0.0",
