@@ -1,102 +1,76 @@
+import { Connection, Keypair, Transaction, SystemProgram } from '@solana/web3.js';
 import { createJupiterApiClient } from '@jup-ag/api';
-import { Connection, Keypair, Transaction, TransactionInstruction, PublicKey } from '@solana/web3.js';
-import { Kamino, Obligation, Reserve } from '@kamino-finance/klend-sdk';
-import fs from 'fs';
+import { Kamino } from '@kamino-finance/klend-sdk';
+import axios from 'axios';
+import WebSocket from 'ws';
+import async from 'async';
 
-const ENV = 'devnet';
-const connection = new Connection(ENV === 'devnet' ? 'https://api.devnet.solana.com' : 'https://api.mainnet-beta.solana.com', 'confirmed');
-const keypair = Keypair.fromSecretKey(Uint8Array.from(JSON.parse(fs.readFileSync(process.env.HOME + '/.config/solana/' + (ENV === 'devnet' ? 'new-devnet.json' : 'id.json'), 'utf8'))));
-const jupiterApi = createJupiterApiClient();
-const kamino = new Kamino(ENV, connection);
-let obligation: Obligation;
-
-async function initKamino() {
-  try {
-    const obligations = await kamino.getObligationsForUser(keypair.publicKey);
-    obligation = obligations.length ? obligations[0] : await kamino.createObligation(keypair.publicKey);
-    console.log('Kamino obligation ready:', obligation.publicKey.toBase58());
-  } catch (error) {
-    console.error('Kamino init failed:', error.message, error.stack);
-  }
-}
-
-const SOL_MINT = new PublicKey('So11111111111111111111111111111111111111112');
-const USDC_MINT = new PublicKey('EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v');
-const INPUT_AMOUNT_LAMPORTS = 5000000n; // 0.005 SOL for ~$3/hour
-const MIN_PROFIT_MARGIN = 0.005; // 0.5%
+console.log('Script started');
+const privateKey = '135,230,96,141,185,65,142,78,229,14,231,19,177,4,235,204,76,149,250,108,192,11,236,233,87,136,213,225,196,193,58,63,189,98,58,85,68,121,56,244,60,241,30,89,117,226,8,66,5,12,119,239,2,100,169,122,253,69,107,203,14,21,230,235';
+const keypair = Keypair.fromSecretKey(Uint8Array.from(privateKey.split(',').map(Number)));
+const connection = new Connection('https://api.devnet.solana.com', 'confirmed');
 
 async function checkArbitrageOpportunity() {
   try {
     console.log('Checking arbitrage opportunity...');
-    const quote1 = await jupiterApi.quoteGet({ inputMint: SOL_MINT.toBase58(), outputMint: USDC_MINT.toBase58(), amount: Number(INPUT_AMOUNT_LAMPORTS), slippageBps: 50 });
-    const quote2 = await jupiterApi.quoteGet({ inputMint: USDC_MINT.toBase58(), outputMint: SOL_MINT.toBase58(), amount: Number(quote1.outAmount), slippageBps: 50 });
-
-    const finalOut = BigInt(quote2.outAmount);
-    const profit = finalOut - INPUT_AMOUNT_LAMPORTS;
-    const profitPercent = Number(profit) / Number(INPUT_AMOUNT_LAMPORTS);
-
-    console.log(`Cycle Profit: ${profit} lamports (${(profitPercent * 100).toFixed(4)}%)`);
-
-    if (profit > 0n && profitPercent > MIN_PROFIT_MARGIN) {
-      console.log('Profitable opp found! Executing...');
-      await executeTrade(quote1, quote2);
-    } else {
-      console.log('No profitable opportunity.');
+    const jupiterApi = createJupiterApiClient();
+    const quoteResponse = await jupiterApi.quoteGet({
+      inputMint: 'So11111111111111111111111111111111111111112', // USDC
+      outputMint: 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v', // USDT
+      amount: 1000000, // 1 USDC in lamports
+      slippageBps: 50, // 0.5% slippage
+    });
+    console.log('Quote response:', quoteResponse);
+    if (quoteResponse && quoteResponse.data && quoteResponse.data.outAmount) {
+      const outAmount = BigInt(quoteResponse.data.outAmount);
+      const inAmount = BigInt(1000000);
+      const profit = Number(outAmount - inAmount);
+      if (profit > -50000 && (profit / Number(inAmount)) > -0.05) { // Allow small losses for testing
+        console.log('Potential opportunity (debug):', quoteResponse.data);
+        await executeTradeWithFlashLoan(quoteResponse.data);
+      } else {
+        console.log('No profitable arbitrage opportunity found. Profit:', profit, 'Margin:', (profit / Number(inAmount)) * 100, '%');
+      }
     }
   } catch (error) {
-    console.error('Arbitrage check failed:', error.message, error.stack);
+    console.error('Arbitrage check failed:', error);
   }
 }
 
-async function executeTrade(quote1, quote2) {
+async function executeTradeWithFlashLoan(quote) {
   try {
-    const amountTokens = Number(INPUT_AMOUNT_LAMPORTS) / 1e9;
-    const solReserve = (await kamino.getReserves()).find(r => r.tokenMint.equals(SOL_MINT));
-    if (!solReserve) throw new Error('SOL reserve not found');
-
-    const borrowIx = await kamino.buildBorrowInstruction(obligation.publicKey, solReserve.publicKey, amountTokens, keypair.publicKey);
-    const repayIx = await kamino.buildRepayInstruction(obligation.publicKey, solReserve.publicKey, amountTokens + 0.0001, keypair.publicKey);
-
-    const swap1 = await jupiterApi.swapInstructionsPost({ quoteResponse: quote1, userPublicKey: keypair.publicKey.toBase58(), wrapAndUnwrapSol: true });
-    const swap2 = await jupiterApi.swapInstructionsPost({ quoteResponse: quote2, userPublicKey: keypair.publicKey.toBase58(), wrapAndUnwrapSol: true });
-
-    const ixs = [
-      ...borrowIx.instructions,
-      ...swap1.computeBudgetInstructions.map(ix => new TransactionInstruction(ix)),
-      ...swap1.setupInstructions.map(ix => new TransactionInstruction(ix)),
-      new TransactionInstruction(swap1.swapInstruction),
-      ...swap1.cleanupInstructions.map(ix => new TransactionInstruction(ix)),
-      ...swap2.computeBudgetInstructions.map(ix => new TransactionInstruction(ix)),
-      ...swap2.setupInstructions.map(ix => new TransactionInstruction(ix)),
-      new TransactionInstruction(swap2.swapInstruction),
-      ...swap2.cleanupInstructions.map(ix => new TransactionInstruction(ix)),
-      ...repayIx.instructions,
-    ];
-
-    const tx = new Transaction();
-    tx.add(...ixs);
-    tx.recentBlockhash = (await connection.getLatestBlockhash()).blockhash;
-    tx.feePayer = keypair.publicKey;
-    tx.sign(keypair);
-
-    const signature = await connection.sendTransaction(tx, [keypair]);
+    const kamino = new Kamino(connection, keypair);
+    const flashLoanAmount = BigInt(quote.inAmount); // Borrow inAmount
+    const flashLoanTx = await kamino.createFlashLoanTx({
+      amount: flashLoanAmount,
+      asset: 'USDC', // Borrow USDC
+      callback: async (borrowedAssets) => {
+        // Execute arbitrage swaps with borrowedAssets (placeholder—replace with Jupiter swap logic)
+        const swapTransaction = new Transaction().add(
+          SystemProgram.transfer({ fromPubkey: keypair.publicKey, toPubkey: keypair.publicKey, lamports: Number(flashLoanAmount) })
+        );
+        return swapTransaction; // Repay within callback
+      },
+    });
+    const signature = await connection.sendTransaction(flashLoanTx, [keypair]);
     console.log('Flash loan arbitrage executed:', signature);
   } catch (error) {
-    console.error('Trade execution failed:', error.message, error.stack);
+    console.error('Flash loan failed:', error);
   }
 }
+
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('Unhandled Rejection at:', promise, 'reason:', reason);
+});
 
 async function main() {
-  try {
-    await initKamino();
-    console.log('Main loop started');
-    while (true) {
-      await checkArbitrageOpportunity();
-      await new Promise(resolve => setTimeout(resolve, 5000));
-    }
-  } catch (error) {
-    console.error('Main error:', error);
+  console.log('Main loop started');
+  while (true) {
+    const startTime = Date.now();
+    await checkArbitrageOpportunity();
+    console.log('Cycle time:', Date.now() - startTime, 'ms');
+    await new Promise(resolve => setTimeout(resolve, 1000)); // 1s delay
   }
 }
 
-main();
+main().catch(console.error);
