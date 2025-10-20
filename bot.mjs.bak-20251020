@@ -17,8 +17,8 @@ async function checkArbitrageOpportunity() {
     const jupiterApi = createJupiterApiClient();
     const pairs = [
       { inMint: 'So11111111111111111111111111111111111111112', outMint: 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v' }, // USDC/USDT
-      { inMint: 'So11111111111111111111111111111111111111112', outMint: 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v' }, // USDC/USDT (duplicate for testing)
-      { inMint: 'So11111111111111111111111111111111111111112', outMint: 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v' } // Add more pairs later (e.g., SOL/USDC)
+      { inMint: 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v', outMint: 'So11111111111111111111111111111111111111112' }, // USDT/USDC
+      { inMint: 'So11111111111111111111111111111111111111112', outMint: '4k3Dyjzvzp8eMZWUXbBCjEvwSkkk59S5iCNLY3QrkX6R' } // USDC/SOL (SOL mint on devnet)
     ];
     for (const pair of pairs) {
       const quoteResponse = await jupiterApi.quoteGet({
@@ -82,3 +82,4 @@ async function main() {
 }
 
 main().catch(console.error);
+
