@@ -18,7 +18,7 @@ async function checkArbitrageOpportunity() {
     const pairs = [
       { inMint: 'So11111111111111111111111111111111111111112', outMint: 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v' }, // USDC/USDT
       { inMint: 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v', outMint: 'So11111111111111111111111111111111111111112' }, // USDT/USDC
-      { inMint: 'So11111111111111111111111111111111111111112', outMint: '4k3Dyjzvzp8eMZWUXbBCjEvwSkkk59S5iCNLY3QrkX6R' } // USDC/SOL (SOL mint on devnet)
+      { inMint: 'So11111111111111111111111111111111111111112', outMint: '4k3Dyjzvzp8eMZWUXbBCjEvwSkkk59S5iCNLY3QrkX6R' } // USDC/SOL
     ];
     for (const pair of pairs) {
       const quoteResponse = await jupiterApi.quoteGet({
@@ -29,15 +29,18 @@ async function checkArbitrageOpportunity() {
       });
       console.log('Quote response for', pair.inMint, 'to', pair.outMint, ':', quoteResponse);
       if (quoteResponse && quoteResponse.data && quoteResponse.data.outAmount) {
-        const outAmount = BigInt(quoteResponse.data.outAmount);
-        const inAmount = BigInt(10000000);
-        const profit = Number(outAmount - inAmount);
-        if (profit >= 0) { // Allow break-even or profit
+        const outAmount = Number(BigInt(quoteResponse.data.outAmount));
+        const inAmount = 10000000; // Number for calculation
+        const profit = outAmount - inAmount;
+        console.log('Profit for', pair.inMint, 'to', pair.outMint, ':', profit, 'Margin:', (profit / inAmount) * 100, '%');
+        if (profit > -1000000) { // Allow small losses for testing
           console.log('Potential opportunity (debug) for', pair.inMint, 'to', pair.outMint, ':', quoteResponse.data);
           await executeTradeWithFlashLoan(quoteResponse.data);
         } else {
-          console.log('No profitable arbitrage opportunity for', pair.inMint, 'to', pair.outMint, '. Profit:', profit, 'Margin:', (profit / Number(inAmount)) * 100, '%');
+          console.log('No profitable arbitrage opportunity for', pair.inMint, 'to', pair.outMint);
         }
+      } else {
+        console.log('Invalid quote response for', pair.inMint, 'to', pair.outMint);
       }
     }
   } catch (error) {
@@ -53,9 +56,9 @@ async function executeTradeWithFlashLoan(quote) {
       amount: flashLoanAmount,
       asset: 'USDC', // Borrow USDC
       callback: async (borrowedAssets) => {
-        // Execute arbitrage swaps with borrowedAssets (placeholder—replace with Jupiter swap logic)
+        // Placeholder swap (replace with Jupiter swap logic)
         const swapTransaction = new Transaction()
-          .add(ComputeBudgetProgram.setComputeUnitLimit({ units: 200000 })) // Set compute budget
+          .add(ComputeBudgetProgram.setComputeUnitLimit({ units: 200000 }))
           .add(SystemProgram.transfer({ fromPubkey: keypair.publicKey, toPubkey: keypair.publicKey, lamports: Number(flashLoanAmount) }));
         return swapTransaction; // Repay within callback
       },
@@ -82,4 +85,3 @@ async function main() {
 }
 
 main().catch(console.error);
-
