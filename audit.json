@@ -1,0 +1,164 @@
+{
+  "auditReportVersion": 2,
+  "vulnerabilities": {
+    "@mrgnlabs/marginfi-client-v2": {
+      "name": "@mrgnlabs/marginfi-client-v2",
+      "severity": "high",
+      "isDirect": true,
+      "via": [
+        "@mrgnlabs/mrgn-common"
+      ],
+      "effects": [],
+      "range": "*",
+      "nodes": [
+        "node_modules/@mrgnlabs/marginfi-client-v2"
+      ],
+      "fixAvailable": false
+    },
+    "@mrgnlabs/mrgn-common": {
+      "name": "@mrgnlabs/mrgn-common",
+      "severity": "high",
+      "isDirect": true,
+      "via": [
+        "@solana/buffer-layout-utils"
+      ],
+      "effects": [
+        "@mrgnlabs/marginfi-client-v2"
+      ],
+      "range": "*",
+      "nodes": [
+        "node_modules/@mrgnlabs/marginfi-client-v2/node_modules/@mrgnlabs/mrgn-common",
+        "node_modules/@mrgnlabs/mrgn-common"
+      ],
+      "fixAvailable": false
+    },
+    "@pythnetwork/pyth-solana-receiver": {
+      "name": "@pythnetwork/pyth-solana-receiver",
+      "severity": "high",
+      "isDirect": false,
+      "via": [
+        "@pythnetwork/solana-utils"
+      ],
+      "effects": [],
+      "range": ">=0.8.1",
+      "nodes": [
+        "node_modules/@pythnetwork/pyth-solana-receiver"
+      ],
+      "fixAvailable": true
+    },
+    "@pythnetwork/solana-utils": {
+      "name": "@pythnetwork/solana-utils",
+      "severity": "high",
+      "isDirect": false,
+      "via": [
+        "jito-ts"
+      ],
+      "effects": [
+        "@pythnetwork/pyth-solana-receiver"
+      ],
+      "range": ">=0.4.0",
+      "nodes": [
+        "node_modules/@pythnetwork/solana-utils"
+      ],
+      "fixAvailable": true
+    },
+    "@solana/buffer-layout-utils": {
+      "name": "@solana/buffer-layout-utils",
+      "severity": "high",
+      "isDirect": false,
+      "via": [
+        "bigint-buffer"
+      ],
+      "effects": [
+        "@mrgnlabs/mrgn-common"
+      ],
+      "range": "*",
+      "nodes": [
+        "node_modules/@solana/buffer-layout-utils"
+      ],
+      "fixAvailable": false
+    },
+    "@solana/web3.js": {
+      "name": "@solana/web3.js",
+      "severity": "high",
+      "isDirect": false,
+      "via": [
+        "bigint-buffer"
+      ],
+      "effects": [
+        "jito-ts"
+      ],
+      "range": "1.43.1 - 1.98.0",
+      "nodes": [
+        "node_modules/jito-ts/node_modules/@solana/web3.js"
+      ],
+      "fixAvailable": true
+    },
+    "bigint-buffer": {
+      "name": "bigint-buffer",
+      "severity": "high",
+      "isDirect": false,
+      "via": [
+        {
+          "source": 1103747,
+          "name": "bigint-buffer",
+          "dependency": "bigint-buffer",
+          "title": "bigint-buffer Vulnerable to Buffer Overflow via toBigIntLE() Function",
+          "url": "https://github.com/advisories/GHSA-3gc7-fjrx-p6mg",
+          "severity": "high",
+          "cwe": [
+            "CWE-120"
+          ],
+          "cvss": {
+            "score": 7.5,
+            "vectorString": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H"
+          },
+          "range": "<=1.1.5"
+        }
+      ],
+      "effects": [
+        "@solana/buffer-layout-utils",
+        "@solana/web3.js"
+      ],
+      "range": "*",
+      "nodes": [
+        "node_modules/bigint-buffer"
+      ],
+      "fixAvailable": false
+    },
+    "jito-ts": {
+      "name": "jito-ts",
+      "severity": "high",
+      "isDirect": false,
+      "via": [
+        "@solana/web3.js"
+      ],
+      "effects": [
+        "@pythnetwork/solana-utils"
+      ],
+      "range": ">=3.0.0",
+      "nodes": [
+        "node_modules/jito-ts"
+      ],
+      "fixAvailable": true
+    }
+  },
+  "metadata": {
+    "vulnerabilities": {
+      "info": 0,
+      "low": 0,
+      "moderate": 0,
+      "high": 8,
+      "critical": 0,
+      "total": 8
+    },
+    "dependencies": {
+      "prod": 397,
+      "dev": 0,
+      "optional": 3,
+      "peer": 0,
+      "peerOptional": 0,
+      "total": 399
+    }
+  }
+}
