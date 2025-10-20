@@ -18,15 +18,15 @@ async function checkArbitrageOpportunity() {
     const quoteResponse = await jupiterApi.quoteGet({
       inputMint: 'So11111111111111111111111111111111111111112', // USDC
       outputMint: 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v', // USDT
-      amount: 1000000, // 1 USDC in lamports
+      amount: 10000000, // 0.01 USDC in lamports
       slippageBps: 50, // 0.5% slippage
     });
     console.log('Quote response:', quoteResponse);
     if (quoteResponse && quoteResponse.data && quoteResponse.data.outAmount) {
       const outAmount = BigInt(quoteResponse.data.outAmount);
-      const inAmount = BigInt(1000000);
+      const inAmount = BigInt(10000000);
       const profit = Number(outAmount - inAmount);
-      if (profit > 0 || (profit / Number(inAmount)) > -0.05) { // Allow break-even or small losses
+      if (profit >= 0) { // Allow break-even or profit
         console.log('Potential opportunity (debug):', quoteResponse.data);
         await executeTradeWithFlashLoan(quoteResponse.data);
       } else {
@@ -75,4 +75,3 @@ async function main() {
 }
 
 main().catch(console.error);
-
