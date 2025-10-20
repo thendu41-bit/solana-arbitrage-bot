@@ -1,6 +1,7 @@
 import { Connection, Keypair, Transaction, SystemProgram } from '@solana/web3.js';
 import { createJupiterApiClient } from '@jup-ag/api';
-import { Kamino } from '@kamino-finance/klend-sdk';
+import pkg from '@kamino-finance/klend-sdk';
+const { Kamino } = pkg;
 import axios from 'axios';
 import WebSocket from 'ws';
 import async from 'async';
@@ -74,4 +75,3 @@ async function main() {
 }
 
 main().catch(console.error);
-
